@@ -95,15 +95,18 @@ def chat_cipher(request: ChatRequest):
 
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
-    message = request.message
-    other_responses = request.otherResponses  # Add this to the request model
-    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other AIs:\n{other_responses}"
-    data = fetch_cohere_response(message, preamble)
+    if "otherResponses" not in request.dict():
+        raise HTTPException(status_code=400, detail="Missing otherResponses in request.")
 
+    message = request.message
+    other_responses = request.dict()["otherResponses"]
+    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other AIs:\n{other_responses}"
+
+    data = fetch_cohere_response(message, preamble)
     return ChatResponse(
         text=data.get("text", "No response received."),
         chat_history=data.get("chat_history", []),
-        finish_reason=data.get("finish_reason", "UNKNOWN")
+        finish_reason=data.get("finish_reason", "UNKNOWN"),
     )
 
 # Start the application
