@@ -95,16 +95,10 @@ def chat_cipher(request: ChatRequest):
 
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
-    if len(ai_responses) < 3:
-        raise HTTPException(status_code=400, detail="Not all AI responses are ready.")
-
-    # Combine responses from NEXUS, ATLAS, and CIPHER
-    other_responses = "\n- ".join([f"{key}: {value}" for key, value in ai_responses.items()])
-    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other AIs:\n- {other_responses}"
-    data = fetch_cohere_response(request.message, preamble)
-
-    # Clear responses after processing
-    ai_responses.clear()
+    message = request.message
+    other_responses = request.otherResponses  # Add this to the request model
+    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other AIs:\n{other_responses}"
+    data = fetch_cohere_response(message, preamble)
 
     return ChatResponse(
         text=data.get("text", "No response received."),
