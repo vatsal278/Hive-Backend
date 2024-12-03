@@ -10,7 +10,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace "*" with specific origins for production
+    allow_origins=["*"],  # Replace "*" with specific frontend URL for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,12 +28,10 @@ BOT_PROMPTS = {
     "COGNIS": "You are COGNIS, a collaborative AI. Integrate the responses from other bots into a single, cohesive response."
 }
 
-# Memory for storing individual AI responses
-ai_responses: Dict[str, str] = {}
-
 # Request schema
 class ChatRequest(BaseModel):
     message: str
+    otherResponses: str = None  # For COGNIS
 
 # Response schema
 class ChatResponse(BaseModel):
@@ -64,7 +62,6 @@ def fetch_cohere_response(message: str, preamble: str, model: str = "command-r-0
 def chat_nexus(request: ChatRequest):
     preamble = BOT_PROMPTS["NEXUS"]
     data = fetch_cohere_response(request.message, preamble)
-    ai_responses["NEXUS"] = data.get("text", "No response received.")
     return ChatResponse(
         text=data.get("text", "No response received."),
         chat_history=data.get("chat_history", []),
@@ -75,7 +72,6 @@ def chat_nexus(request: ChatRequest):
 def chat_atlas(request: ChatRequest):
     preamble = BOT_PROMPTS["ATLAS"]
     data = fetch_cohere_response(request.message, preamble)
-    ai_responses["ATLAS"] = data.get("text", "No response received.")
     return ChatResponse(
         text=data.get("text", "No response received."),
         chat_history=data.get("chat_history", []),
@@ -86,7 +82,6 @@ def chat_atlas(request: ChatRequest):
 def chat_cipher(request: ChatRequest):
     preamble = BOT_PROMPTS["CIPHER"]
     data = fetch_cohere_response(request.message, preamble)
-    ai_responses["CIPHER"] = data.get("text", "No response received.")
     return ChatResponse(
         text=data.get("text", "No response received."),
         chat_history=data.get("chat_history", []),
@@ -95,18 +90,16 @@ def chat_cipher(request: ChatRequest):
 
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
-    if "otherResponses" not in request.dict():
+    if not request.otherResponses:
         raise HTTPException(status_code=400, detail="Missing otherResponses in request.")
 
-    message = request.message
-    other_responses = request.dict()["otherResponses"]
-    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other AIs:\n{other_responses}"
+    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other AIs:\n{request.otherResponses}"
+    data = fetch_cohere_response(request.message, preamble)
 
-    data = fetch_cohere_response(message, preamble)
     return ChatResponse(
         text=data.get("text", "No response received."),
         chat_history=data.get("chat_history", []),
-        finish_reason=data.get("finish_reason", "UNKNOWN"),
+        finish_reason=data.get("finish_reason", "UNKNOWN")
     )
 
 # Start the application
