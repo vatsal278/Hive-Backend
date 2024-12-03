@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Dict
@@ -20,18 +21,15 @@ BOT_PROMPTS = {
 # Memory for storing individual AI responses
 ai_responses: Dict[str, str] = {}
 
-
 # Request schema
 class ChatRequest(BaseModel):
     message: str
-
 
 # Response schema
 class ChatResponse(BaseModel):
     text: str
     chat_history: list
     finish_reason: str
-
 
 # Function to make a synchronous request to Cohere API
 def fetch_cohere_response(message: str, preamble: str, model: str = "command-r-08-2024") -> Dict:
@@ -51,7 +49,6 @@ def fetch_cohere_response(message: str, preamble: str, model: str = "command-r-0
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # Bot-specific endpoints
 @app.post("/api/nexus", response_model=ChatResponse)
 def chat_nexus(request: ChatRequest):
@@ -64,7 +61,6 @@ def chat_nexus(request: ChatRequest):
         finish_reason=data.get("finish_reason", "UNKNOWN")
     )
 
-
 @app.post("/api/atlas", response_model=ChatResponse)
 def chat_atlas(request: ChatRequest):
     preamble = BOT_PROMPTS["ATLAS"]
@@ -76,7 +72,6 @@ def chat_atlas(request: ChatRequest):
         finish_reason=data.get("finish_reason", "UNKNOWN")
     )
 
-
 @app.post("/api/cipher", response_model=ChatResponse)
 def chat_cipher(request: ChatRequest):
     preamble = BOT_PROMPTS["CIPHER"]
@@ -87,7 +82,6 @@ def chat_cipher(request: ChatRequest):
         chat_history=data.get("chat_history", []),
         finish_reason=data.get("finish_reason", "UNKNOWN")
     )
-
 
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
@@ -107,3 +101,10 @@ def chat_cognis(request: ChatRequest):
         chat_history=data.get("chat_history", []),
         finish_reason=data.get("finish_reason", "UNKNOWN")
     )
+
+# Start the application
+if __name__ == "__main__":
+    # Bind to the port specified by Render or default to 8000
+    port = int(os.environ.get("PORT", 8000))
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=port)
