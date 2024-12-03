@@ -90,11 +90,16 @@ def chat_cipher(request: ChatRequest):
 
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
+    print("Received request for COGNIS:", request.dict())  # Debugging log
+
     if not request.otherResponses:
         raise HTTPException(status_code=400, detail="Missing otherResponses in request.")
 
     preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other AIs:\n{request.otherResponses}"
+    print("Generated Preamble for COGNIS:", preamble)  # Debugging log
+
     data = fetch_cohere_response(request.message, preamble)
+    print("COGNIS Response Data:", data)  # Debugging log
 
     return ChatResponse(
         text=data.get("text", "No response received."),
@@ -104,7 +109,6 @@ def chat_cognis(request: ChatRequest):
 
 # Start the application
 if __name__ == "__main__":
-    # Bind to the port specified by Render or default to 8000
     port = int(os.environ.get("PORT", 8000))
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=port)
