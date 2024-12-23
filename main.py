@@ -205,8 +205,6 @@ def chat_coeus(request: ChatRequest):
         finish_reason=data.get("finish_reason", "UNKNOWN")
     )
 
-)
-
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
     print("Received request for COGNIS:", request.dict())  # Debugging log
