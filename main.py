@@ -138,7 +138,42 @@ def fetch_cohere_response(message: str, preamble: str, model: str = "command-r-0
         return response.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+def fetch_cognis_parameters(message: str) -> Dict:
+    """
+    Fetch optimal parameters (top_k, top_p, temperature) for Cognis using Cohere.
+    """
+    preamble = """
+    You are an AI assistant that generates the most suitable parameters for answering questions.
+    Based on the input question, provide the optimal values for:
+    - top_k: Controls token diversity (low for concise, high for creative).
+    - top_p: Controls response range (high for narrow range, low for wider range).
+    - temperature: Controls randomness (low for deterministic, high for creative).
+    Input Question: "{message}"
+    Output:
+    top_k: 
+    top_p: 
+    temperature: 
+    """
+    headers = {
+        "Authorization": f"Bearer {COHERE_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "message": message,
+        "model": "command-xlarge-nightly",
+        "preamble": preamble.format(message=message)
+    }
+    try:
+        response = requests.post(COHERE_API_URL, json=payload, headers=headers)
+        response.raise_for_status()
+        response_text = response.json().get("generations", [{}])[0].get("text", "")
+        # Parse the response for parameters
+        parameters = {line.split(":")[0].strip(): float(line.split(":")[1].strip()) 
+                      for line in response_text.split("\n") if ":" in line}
+        return parameters
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
 # Titan-specific endpoints
 @app.post("/api/kronos", response_model=ChatResponse)
 def chat_kronos(request: ChatRequest):
@@ -170,6 +205,8 @@ def chat_coeus(request: ChatRequest):
         finish_reason=data.get("finish_reason", "UNKNOWN")
     )
 
+)
+
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
     print("Received request for COGNIS:", request.dict())  # Debugging log
@@ -177,10 +214,18 @@ def chat_cognis(request: ChatRequest):
     if not request.otherResponses:
         raise HTTPException(status_code=400, detail="Missing otherResponses in request.")
 
-    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other Titans:\n{request.otherResponses}"
-    print("Generated Preamble for COGNIS:", preamble)  # Debugging log
+    # Fetch parameters from Parameter Generator AI
+    parameters = fetch_cognis_parameters(request.message)
+    top_k = int(parameters.get("top_k", 10))
+    top_p = parameters.get("top_p", 0.9)
+    temperature = parameters.get("temperature", 1.0)
 
+    print(f"Generated Parameters for COGNIS: top_k={top_k}, top_p={top_p}, temperature={temperature}")
+
+    # Use the generated parameters to respond
+    preamble = f"{BOT_PROMPTS['COGNIS']}\nHere are the responses from other Titans:\n{request.otherResponses}"
     data = fetch_cohere_response(request.message, preamble)
+
     print("COGNIS Response Data:", data)  # Debugging log
 
     return ChatResponse(
