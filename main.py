@@ -208,6 +208,11 @@ def fetch_cognis_parameters(message: str) -> Dict:
 # Titan-specific endpoints
 @app.post("/api/kronos", response_model=ChatResponse)
 def chat_kronos(request: ChatRequest):
+    # Ensure wallet address is provided
+    if not request.wallet_address:
+        raise HTTPException(
+            status_code=400, detail="Missing wallet address. Please connect your wallet."
+        )
     # Enforce rate limit
     enforce_rate_limit(request.wallet_address)
 
@@ -221,6 +226,11 @@ def chat_kronos(request: ChatRequest):
 
 @app.post("/api/thea", response_model=ChatResponse)
 def chat_thea(request: ChatRequest):
+    # Ensure wallet address is provided
+    if not request.wallet_address:
+        raise HTTPException(
+            status_code=400, detail="Missing wallet address. Please connect your wallet."
+        )
     # Enforce rate limit
     enforce_rate_limit(request.wallet_address)
 
@@ -234,6 +244,11 @@ def chat_thea(request: ChatRequest):
 
 @app.post("/api/coeus", response_model=ChatResponse)
 def chat_coeus(request: ChatRequest):
+    # Ensure wallet address is provided
+    if not request.wallet_address:
+        raise HTTPException(
+            status_code=400, detail="Missing wallet address. Please connect your wallet."
+        )
     # Enforce rate limit
     enforce_rate_limit(request.wallet_address)
 
@@ -247,6 +262,11 @@ def chat_coeus(request: ChatRequest):
 
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
+    # Ensure wallet address is provided
+    if not request.wallet_address:
+        raise HTTPException(
+            status_code=400, detail="Missing wallet address. Please connect your wallet."
+        )
     # Enforce rate limit
     enforce_rate_limit(request.wallet_address)
 
