@@ -110,16 +110,46 @@ Approach every query by integrating the distinct strengths of Kronos, Thea, and 
 """
 }
 
+# Rate limit settings
+RATE_LIMIT = 10  # Maximum requests per hour
+TIME_WINDOW = timedelta(hours=1)  # Time window for rate limiting
+rate_limit_store: Dict[str, List[datetime]] = {}  # In-memory store for rate limits
+
 # Request schema
 class ChatRequest(BaseModel):
     message: str
+    wallet_address: str  # Wallet address for rate limiting
     otherResponses: str = None  # For COGNIS
 
 # Response schema
 class ChatResponse(BaseModel):
     text: str
-    chat_history: list
+    chat_history: List[str] = []
     finish_reason: str
+
+# Helper: Enforce rate limiting
+def enforce_rate_limit(wallet_address: str):
+    now = datetime.now()
+
+    # Initialize rate limit data for the wallet if not present
+    if wallet_address not in rate_limit_store:
+        rate_limit_store[wallet_address] = []
+
+    # Remove old timestamps outside the time window
+    rate_limit_store[wallet_address] = [
+        timestamp for timestamp in rate_limit_store[wallet_address]
+        if timestamp > now - TIME_WINDOW
+    ]
+
+    # Check if the wallet has exceeded the rate limit
+    if len(rate_limit_store[wallet_address]) >= RATE_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. You can only send 10 requests per hour.",
+        )
+
+    # Add the current request timestamp
+    rate_limit_store[wallet_address].append(now)
 
 # Function to make a synchronous request to Cohere API
 def fetch_cohere_response(message: str, preamble: str, model: str = "command-r-08-2024") -> Dict:
@@ -138,6 +168,7 @@ def fetch_cohere_response(message: str, preamble: str, model: str = "command-r-0
         return response.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 def fetch_cognis_parameters(message: str) -> Dict:
     """
     Fetch optimal parameters (top_k, top_p, temperature) for Cognis using Cohere.
@@ -177,6 +208,9 @@ def fetch_cognis_parameters(message: str) -> Dict:
 # Titan-specific endpoints
 @app.post("/api/kronos", response_model=ChatResponse)
 def chat_kronos(request: ChatRequest):
+    # Enforce rate limit
+    enforce_rate_limit(request.wallet_address)
+
     preamble = BOT_PROMPTS["KRONOS"]
     data = fetch_cohere_response(request.message, preamble)
     return ChatResponse(
@@ -187,6 +221,9 @@ def chat_kronos(request: ChatRequest):
 
 @app.post("/api/thea", response_model=ChatResponse)
 def chat_thea(request: ChatRequest):
+    # Enforce rate limit
+    enforce_rate_limit(request.wallet_address)
+
     preamble = BOT_PROMPTS["THEA"]
     data = fetch_cohere_response(request.message, preamble)
     return ChatResponse(
@@ -197,6 +234,9 @@ def chat_thea(request: ChatRequest):
 
 @app.post("/api/coeus", response_model=ChatResponse)
 def chat_coeus(request: ChatRequest):
+    # Enforce rate limit
+    enforce_rate_limit(request.wallet_address)
+
     preamble = BOT_PROMPTS["COEUS"]
     data = fetch_cohere_response(request.message, preamble)
     return ChatResponse(
@@ -207,7 +247,8 @@ def chat_coeus(request: ChatRequest):
 
 @app.post("/api/cognis", response_model=ChatResponse)
 def chat_cognis(request: ChatRequest):
-    print("Received request for COGNIS:", request.dict())  # Debugging log
+    # Enforce rate limit
+    enforce_rate_limit(request.wallet_address)
 
     if not request.otherResponses:
         raise HTTPException(status_code=400, detail="Missing otherResponses in request.")
