@@ -113,7 +113,7 @@ Approach every query by integrating the distinct strengths of Kronos, Thea, and 
 # Rate limit settings
 RATE_LIMIT = 10  # Maximum requests per hour
 TIME_WINDOW = timedelta(hours=1)  # Time window for rate limiting
-rate_limit_store: Dict[str, List[datetime]] = {}  # In-memory store for rate limits
+rate_limit_store: Dict[str, list[datetime]] = {}  # In-memory store for rate limits
 
 # Request schema
 class ChatRequest(BaseModel):
@@ -124,7 +124,7 @@ class ChatRequest(BaseModel):
 # Response schema
 class ChatResponse(BaseModel):
     text: str
-    chat_history: List[str] = []
+    chat_history: list[str] = []
     finish_reason: str
 
 # Helper: Enforce rate limiting
